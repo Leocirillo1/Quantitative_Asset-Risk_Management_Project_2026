@@ -1,4 +1,6 @@
-streamlit
+streamlit>=1.40
 numpy
 pandas
 scipy
+plotly
+yfinance

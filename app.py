@@ -1,74 +1,35 @@
-import pandas as pd
+"""
+Robo-advisor web app. Run it with:  python -m streamlit run app.py
+This file only creates the menu and the sidebar; each page is in the folder app_pages/.
+"""
 import streamlit as st
 
-from src.holt_laury import HoltLaury
-from src.client_profile import ClientProfile
+from src.data import download_prices
 
-st.set_page_config(page_title="Robo-advisor", page_icon="📈")
-st.title("Robo-advisor: your investor profile")
+st.set_page_config(page_title="Robo-advisor", page_icon="📈", layout="wide")
 
-hl = HoltLaury()
+pages = st.navigation([
+    st.Page("app_pages/profile.py", title="1. Your profile", icon="🧑", default=True),
+    st.Page("app_pages/choices.py", title="2. Your products & constraints", icon="🧩"),
+    st.Page("app_pages/portfolio.py", title="3. Your portfolio", icon="📊"),
+    st.Page("app_pages/backtest.py", title="4. Backtest", icon="📈"),
+    st.Page("app_pages/time_machine.py", title="5. Time machine", icon="⏳"),
+    st.Page("app_pages/how_it_works.py", title="How it works", icon="📚"),
+])
 
-with st.form("questionnaire"):
-    # ---------- Part 1: Holt-Laury ----------
-    st.header("1. Your attitude to risk")
-    st.write("You invest **100 CHF** for one year. In each row, choose the option you prefer.")
+# ---------- Sidebar: currency and data ----------
+st.sidebar.radio("Currency", ["USD", "CHF"], key="currency", horizontal=True,
+                 help="CHF: prices converted with the USD/CHF rate, risk-free rate = SNB policy rate.")
+try:
+    last_date = download_prices().index[-1]
+except Exception:
+    st.error("We could not download the prices from Yahoo Finance. Check the internet connection and try again.")
+    if st.button("Try again"):
+        st.rerun()
+    st.stop()
+st.sidebar.caption(f"Prices until {last_date:%d %B %Y} (Yahoo Finance, updated every day)")
+if st.sidebar.button("🔄 Update data now"):
+    st.cache_data.clear()  # forget the prices in memory -> new download from Yahoo Finance
+    st.rerun()
 
-    a_good, a_bad = HoltLaury.OPTION_A
-    b_good, b_bad = HoltLaury.OPTION_B
-    choices = []
-    for i, p in enumerate(HoltLaury.PROBABILITIES):
-        col1, col2, col3 = st.columns([3, 3, 2])
-        col1.write(f"**A:** {p:.0%} → {a_good} CHF, {1 - p:.0%} → {a_bad} CHF")
-        col2.write(f"**B:** {p:.0%} → {b_good} CHF, {1 - p:.0%} → {b_bad} CHF")
-        choice = col3.radio(f"Row {i + 1}", ["A", "B"], index=None, horizontal=True,
-                            label_visibility="collapsed", key=f"hl_{i}")
-        choices.append(choice)
-
-    # ---------- Part 2: Risk capacity ----------
-    st.header("2. Your situation")
-    age = st.selectbox("Your age", list(ClientProfile.AGE))
-    horizon = st.selectbox("How long do you plan to invest?", list(ClientProfile.HORIZON))
-    needs_money = st.radio("Will you need a large part of this money in the next 3 years?",
-                           list(ClientProfile.NEEDS_MONEY), horizontal=True)
-    income = st.selectbox("How stable is your income?", list(ClientProfile.INCOME))
-    max_loss = st.selectbox("What is the largest loss in one year you could accept?", list(ClientProfile.MAX_LOSS))
-    crypto = st.radio("Do you want crypto in your portfolio?", ["No", "Yes"], horizontal=True)
-
-    submitted = st.form_submit_button("Compute my profile")
-
-# ---------- Compute profile ----------
-if submitted:
-    if None in choices:
-        st.error("Answer all 10 rows of part 1, then compute your profile again.")
-    else:
-        gamma_hl = hl.compute_gamma(choices)
-        if gamma_hl is None:
-            st.error("Your choices in part 1 switch back and forth between A and B. "
-                     "Pick A until the row where B becomes better for you, then B for all the rows below.")
-        else:
-            st.session_state["profile"] = ClientProfile(gamma_hl, age, horizon, needs_money,
-                                                        income, max_loss, crypto)
-
-# ---------- Show profile (stays visible for the next pages) ----------
-if "profile" in st.session_state:
-    profile = st.session_state["profile"]
-    st.header(f"Your profile: {profile.label}")
-
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Risk willingness (γ)", f"{profile.gamma_willingness:.1f}")
-    col2.metric("Minimum γ from your situation", f"{profile.gamma_capacity:.1f}")
-    col3.metric("Final γ", f"{profile.gamma:.1f}")
-
-    st.subheader("Constraints for your portfolio")
-    c = profile.constraints
-    st.table(pd.DataFrame({
-        "Constraint": ["Maximum in equities", "Minimum in bonds", "Maximum per asset", "Crypto allowed"],
-        "Value": [f"{c['max_equity']:.0%}", f"{c['min_bonds']:.0%}", f"{c['max_weight_per_asset']:.0%}",
-                  "Yes" if c["allow_crypto"] else "No"],
-    }))
-
-    with st.expander("How is γ computed?"):
-        st.write("Each row has a γ at which you are indifferent between A and B. "
-                 "Your γ is the midpoint between the last row where you chose A and the first where you chose B.")
-        st.table(pd.DataFrame({"Row": range(1, 10), "Indifference γ": [round(g, 2) for g in hl.cutoffs]}))
+pages.run()
