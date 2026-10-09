@@ -33,7 +33,6 @@ with st.form("questionnaire"):
                            list(ClientProfile.NEEDS_MONEY), horizontal=True)
     income = st.selectbox("How stable is your income?", list(ClientProfile.INCOME))
     max_loss = st.selectbox("What is the largest loss in one year you could accept?", list(ClientProfile.MAX_LOSS))
-    sector = st.selectbox("In which sector do you work?", list(ClientProfile.SECTOR_ETF))
     crypto = st.radio("Do you want crypto in your portfolio?", ["No", "Yes"], horizontal=True)
 
     submitted = st.form_submit_button("Compute my profile")
@@ -49,7 +48,7 @@ if submitted:
                      "Pick A until the row where B becomes better for you, then B for all the rows below.")
         else:
             st.session_state["profile"] = ClientProfile(gamma_hl, age, horizon, needs_money,
-                                                        income, max_loss, sector, crypto)
+                                                        income, max_loss, crypto)
 
 # ---------- Show profile (stays visible for the next pages) ----------
 if "profile" in st.session_state:
@@ -64,10 +63,8 @@ if "profile" in st.session_state:
     st.subheader("Constraints for your portfolio")
     c = profile.constraints
     st.table(pd.DataFrame({
-        "Constraint": ["Maximum in equities", "Minimum in bonds", "Maximum per asset",
-                       "Your own sector", "Crypto allowed"],
+        "Constraint": ["Maximum in equities", "Minimum in bonds", "Maximum per asset", "Crypto allowed"],
         "Value": [f"{c['max_equity']:.0%}", f"{c['min_bonds']:.0%}", f"{c['max_weight_per_asset']:.0%}",
-                  f"{c['own_sector_etf']} max {c['max_weight_own_sector']:.0%}" if c["own_sector_etf"] else "No limit",
                   "Yes" if c["allow_crypto"] else "No"],
     }))
 

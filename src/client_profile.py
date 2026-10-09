@@ -17,23 +17,9 @@ class ClientProfile:
     MAX_EQUITY_HORIZON = {"Less than 3 years": 0.3, "3-7 years": 0.6, "7-15 years": 0.8, "More than 15 years": 1.0}
     MAX_EQUITY_LOSS = {"-5%": 0.2, "-10%": 0.4, "-20%": 0.7, "-30% or more": 1.0}
 
-    # "Don't invest where you work": job sector -> sector ETF to limit
-    SECTOR_ETF = {
-        "None / other": None,
-        "Banking & finance": "XLF",
-        "Pharma & healthcare": "XLV",
-        "Technology": "XLK",
-        "Energy": "XLE",
-        "Industry & manufacturing": "XLI",
-        "Food & consumer staples": "XLP",
-        "Retail, luxury & watchmaking": "XLY",
-        "Real estate": "XLRE",
-    }
-
     MAX_WEIGHT_PER_ASSET = 0.4
-    MAX_WEIGHT_OWN_SECTOR = 0.05
 
-    def __init__(self, gamma_willingness, age, horizon, needs_money, income, max_loss, sector, crypto):
+    def __init__(self, gamma_willingness, age, horizon, needs_money, income, max_loss, crypto):
         self.gamma_willingness = gamma_willingness
 
         # Risk capacity score (0 to 13)
@@ -49,8 +35,6 @@ class ClientProfile:
             "max_equity": min(self.MAX_EQUITY_HORIZON[horizon], self.MAX_EQUITY_LOSS[max_loss]),
             "min_bonds": 0.3 if needs_money == "Yes" else 0.0,
             "max_weight_per_asset": self.MAX_WEIGHT_PER_ASSET,
-            "own_sector_etf": self.SECTOR_ETF[sector],
-            "max_weight_own_sector": self.MAX_WEIGHT_OWN_SECTOR,
             "allow_crypto": crypto == "Yes",
         }
 
